@@ -10,7 +10,7 @@ Code is available without warranty (see license).
   This R script can be applied on a regular basis (e.g. daily) for continuous surveillance of results and early detection of cases potentially requiring biomedical expertise or further investigations.  
 
 ## Inputs/output structure and functions of the script
-##### Inputs:
+#### Inputs:
  - **New results table** (*file name set in parameters by user*):
  A table of results to be validated. In our case, this table was extracted on a regular basis from MOLIS (CGM), our Laboratory Information Information System (LIS).
  This table must be a ".xlsx" spreadsheet with one line per result and sufficient columns to describe all needed parameters.
@@ -21,21 +21,22 @@ Code is available without warranty (see license).
   - **Sample types dictionary** (*file name set in parameters by user*) 
   This ".xlsx" file must contain two sheets, both with two columns. 
   On the first sheet, the 1st column must contain an exhaustive non-redundant list of all the exact values possibly taken to describe "sample type" (or specimen nature, e.g. "Nasopharyingeal swab"). The 2nd columns is used to regroups similar samples types in broader categories (e.g. upper respiratory tract samples).
-
-    *Example for sheet 1 of sample types dictionary table*
-
-| Sample type  |  Category |
+  
+  *Example for sheet 1 of sample types dictionary table*
+  | Sample type  |  Category |
 |---|---|
 | Nasopharyingeal swab  | URT|
 | nasopharyingeal swab  | URT|
 |  Oropharyingeal swab |  URT | 
 |  Feces  | Rectal/feces  |  
 |  Rectal swab  | Rectal/feces  |  
-|  Blood  | Blood  |  
-    
-    On the second sheet, the 1st column should be a complete, non-redundant, list of the categories as defined in the 2nd columns of the 1st sheet. The second column should code with Y (Yes) or N (No) if the sample categories is a "low yield sample" type. In our case, we had defined as "low yield samples" categories of specimen positive in less than 5% of cases. (Please note that this value has to be adapted to the prevalence of the disease. This value was defined in the initial phase of the epidemic when over 10% of nasopharyngeal swabs were positive). 
+|  Blood  | Blood  | 
 
-    *Example for sheet 2 of sample types dictionary table*
+ On the second sheet, the 1st column should be a complete, non-redundant, list of the categories as defined in the 2nd columns of the 1st sheet. The second column should code with Y (Yes) or N (No) if the sample categories is a "low yield sample" type. In our case, we had defined as "low yield samples" categories of specimen positive in less than 5% of cases. (Please note that this value has to be adapted to the prevalence of the disease. This value was defined in the initial phase of the epidemic when over 10% of nasopharyngeal swabs were positive). 
+
+
+
+*Example for sheet 2 of sample types dictionary table*
 
 | Category type  | Low Yield  |
 |---|---|
@@ -43,13 +44,13 @@ Code is available without warranty (see license).
 |  Rectal/feces  | N  |  
 |  Blood  | Y  | 
 
-    Of note, to work, the script requires that values of the column defined in parameters as "sample type" to be found in the dictionary. If one is missing, the script will stop and generate a ".xlsx" table named "3_sample_source_dictionary_missing.xlsx". If this table is generated, then its content should be copy-pasted into the first column of the dictionary table and categorized adequately by filling the second column and the second sheet.
+   Of note, to work, the script requires that values of the column defined in parameters as "sample type" to be found in the dictionary. If one is missing, the script will stop and generate a ".xlsx" table named "3_sample_source_dictionary_missing.xlsx". If this table is generated, then its content should be copy-pasted into the first column of the dictionary table and categorized adequately by filling the second column and the second sheet.
 
   - **Already reviewed cases** (*2_solved_cases_updated.xlsx*):
     The script will, on each execution, identified patients with discrepancies that cannot be explained by on rules encoded in the script (see below). These should be reviewed manually and adequately investigated. Once investigated, those cases (i.e. their corresponding rows) should be copy-pasted into this *already validated table* so that they do not appear again on the next execution of the script. 
 
 
-##### Outputs:
+#### Outputs:
   - **Discrepant cases to be reviewed** (*3_to_be_validated_.xlsx*):
     This file will be completed by each successful execution of the script with all results involved in a discrepant pairwise comparison. Those cases should be reviewed. Then, the full row should be cut-pasted into the *2_solved_cases_updated.xlsx* table so that they do not appear on next execution of the script.  
 
@@ -62,7 +63,7 @@ Code is available without warranty (see license).
   - **Traceability and figures folder** (*{date}_{hour}_{userID}*):
     A folder with a copy of all input and output files is created on each execution of the script for traceability.
     
-##### Embedded discrepancies classification algorithm:
+#### Embedded discrepancies classification algorithm:
    The script was designed to limit the number of "false positive", i.e. the number of discrepancies to be reviewed manually. The script goes through the results of each patient with more than one result. It reviews results in the chronological order and compare them in a pairwise fashion. In case of discrepant results for the two samples taken in the pairwise comparison, (negative versus positive or the reverse), it then tries to apply three rules which could easily explain the observed difference. Then, if no rule applies, it will record the incriminated results into the table of *Discrepant cases to be reviewed*. 
    
    Adapted from our [preprint](https://doi.org/10.1101/2020.07.27.20162123), the 3 rules that could explain and classify the discrepancies are:
@@ -86,14 +87,14 @@ Please note that, as descriped in our [preprint](https://doi.org/10.1101/2020.07
 
 ## Manual
 
-##### Requirements: 
+#### Requirements: 
   - R: *tested with v. 3.6*
   - Installed packages: *readxl, tidyr, dplyr, writexl, ggplot2, scales, furniture, htmlTable, colorspace, forcats, rtf, data.table, rlang*
   - A spreadsheet software capable of modifying ".xlsx" files
   - A ".xlsx" file with RT-PCR results: *each result must be a row and there should have sufficient columns to describe all parameters (see below)*. 
 
 
-##### First execution:
+#### First execution:
  1. Extract from your LIS in a ".xlsx" spreadsheet all results to screen for discrepancies. 
  2. Complete in the R script the parameters in the "PARAMS" chunk of code as follows. See in code for explanations on how to complete these parameters.
  3. Run all the code.
@@ -106,7 +107,7 @@ Please note that, as descriped in our [preprint](https://doi.org/10.1101/2020.07
  10. Browse figures and tables in the created folder. They can help you get interesting information on your flow of results.  
 
 
-##### Next executions:
+#### Next executions:
 1. The extracted table of results can now only contain new results. However, if results are already in the*Table of all previous results*, only new results of results that have change will be added to the database.
 2. You  need to update the name of the input table of in the parameter chunk of code to fit the filename of your newly extracted table.
 3. Run the code. 
