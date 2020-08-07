@@ -1,3 +1,7 @@
+
+ # CAUTION: STILL NEED TO REMPLACE SOME HARD CODED FACTORS INTO PARAMS VARIABLES -> Work in progress 
+
+
 #################################################################################################
 #authors: "Valentin Scherz and Linda Mueller"
 #date: 25/06/2020

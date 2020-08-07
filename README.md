@@ -23,23 +23,26 @@ Code is available without warranty (see license).
   On the first sheet, the 1st column must contain an exhaustive non-redundant list of all the exact values possibly taken to describe "sample type" (or specimen nature, e.g. "Nasopharyingeal swab"). The 2nd columns is used to regroups similar samples types in broader categories (e.g. upper respiratory tract samples).
 
     *Example for sheet 1 of sample types dictionary table*
-    | Sample type  |  Category |
-    |---|---|---|---|---|
-    | Nasopharyingeal swab  | URT|
-    | nasopharyingeal swab  | URT|
-    |  Oropharyingeal swab |  URT | 
-    |  Feces  | Rectal/feces  |  
-    |  Rectal swab  | Rectal/feces  |  
-    |  Blood  | Blood  |  
+
+| Sample type  |  Category |
+|---|---|
+| Nasopharyingeal swab  | URT|
+| nasopharyingeal swab  | URT|
+|  Oropharyingeal swab |  URT | 
+|  Feces  | Rectal/feces  |  
+|  Rectal swab  | Rectal/feces  |  
+|  Blood  | Blood  |  
     
     On the second sheet, the 1st column should be a complete, non-redundant, list of the categories as defined in the 2nd columns of the 1st sheet. The second column should code with Y (Yes) or N (No) if the sample categories is a "low yield sample" type. In our case, we had defined as "low yield samples" categories of specimen positive in less than 5% of cases. (Please note that this value has to be adapted to the prevalence of the disease. This value was defined in the initial phase of the epidemic when over 10% of nasopharyngeal swabs were positive). 
 
     *Example for sheet 2 of sample types dictionary table*
-    | Category type  | Low Yield  |
-    |---|---|---|---|---|
-    | URT  | N |
-    |  Rectal/feces  | N  |  
-    |  Blood  | Y  | 
+
+| Category type  | Low Yield  |
+|---|---|
+| URT  | N |
+|  Rectal/feces  | N  |  
+|  Blood  | Y  | 
+
     Of note, to work, the script requires that values of the column defined in parameters as "sample type" to be found in the dictionary. If one is missing, the script will stop and generate a ".xlsx" table named "3_sample_source_dictionary_missing.xlsx". If this table is generated, then its content should be copy-pasted into the first column of the dictionary table and categorized adequately by filling the second column and the second sheet.
 
   - **Already reviewed cases** (*2_solved_cases_updated.xlsx*):
