@@ -1,7 +1,7 @@
 # SARS-CoV-2 discrepant screen 
 A  R script to support quality monitoring of the flow of SARS-CoV-2 RT-PCR results based on the opportunity provided by repeated testing on patients. See our [preprint](https://doi.org/10.1101/2020.07.27.20162123) for more on the motivations to develop this script and the results of its application on the four first months of the epidemic in our clinical laboratory. 
 
-Code is available without warranty (see license).
+Code is available without warranty (see license). However if you have difficulties to implement it, open an issue to describe your problem and we will see what we can do!
 
 
 ## Overall description
