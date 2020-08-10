@@ -51,6 +51,9 @@ Code is available without warranty (see license).
 
 
 #### Outputs:
+  - **Missing ID** (*3_missing_IPP.xlsx*):
+    All results should be assigned to a patient ID, as described in the parameters defined by the user. If not, these samples will be filtered out of the analysis and recorded here. This table is created only if some patient are missing an ID and is otherwise deleted. 
+
   - **Discrepant cases to be reviewed** (*3_to_be_validated_.xlsx*):
     This file will be completed by each successful execution of the script with all results involved in a discrepant pairwise comparison. Those cases should be reviewed. Then, the full row should be cut-pasted into the *2_solved_cases_updated.xlsx* table so that they do not appear on next execution of the script.  
 

@@ -1,7 +1,3 @@
-
- # CAUTION: STILL NEED TO REMPLACE SOME HARD CODED FACTORS INTO PARAMS VARIABLES -> Work in progress 
-
-
 #################################################################################################
 #authors: "Valentin Scherz and Linda Mueller"
 #date: 25/06/2020
@@ -40,37 +36,46 @@
 
 ## Those variables should be adapted to fit your setting and the structure of the table with results
 
-### ".xlsx" table with new results to be added to the database of results. This table should be 
-#   structured with one line per analysis and variables (columns) matching all the parameters defined 
-#   in the next chunk of code. The structure of this table must remain stable for all execution of the
-#   script. 
-input_table_path <- "extraction1202-1206.xlsx"
+###  "New results table"
+input_table_path <- "extraction1202-1206.xlsx" #".xlsx" table with new results to be added to the database of results.  
 
-### Sample type dictionary file(see requirements for structure)
-dict_path <- "../Ressources/sample_source_dictionnary.xlsx"
+### Sample type dictionary file
+dict_path <- "../Ressources/sample_source_dictionnary.xlsx" # See Readme for structure
 
 ### Script file name (a copy of this script script is copied after each run for tractability)
 script_path <- "20200423_discordance_analysis_for_publication.R"
 
-### Some QC samples could be included in the provided input table. Provide a variable name (column)
-#   in the input spread sheet and a value (pattern) matching these controls to filter these out.
-QC_column <- "Nom pat."
-QC_pattern <- "ZZ IMU"
+### QC to be filtered out 
+#Some QC samples could be included in the provided input table. Provide a variable name (column)
+#   of the input spread sheet and a value (pattern) matching these controls to filter these out.
+QC_column <- "Nom pat." # Column to filter out QC
+QC_pattern <- "ZZ IMU" # Pattern consistently foudn in QC samples in this column,.
 
-### Variable (column) describing the test results and the possible values to describe positivity 
-#   and negativity (e.g. NEGATIVE/POSITIVE)
+### Variable (column) describing the test results and the possible values to describe positive/ 
+#  negative result (e.g. NEGATIVE/POSITIVE)
 Results_col  <- "COWE"  # Column name describing test result
-Results_variables <- c("POSITIVE", "NEGATIVE") # Column name describing acceptable values in this column
 
-### Variable (column) with patient identifier
+POS_result_variable <- "POSITIVE"
+NEG_result_variable <- "NEGATIVE"
+
+### Variable (columns) with Ct values
+ct_cols <- c("COVWIP", "COWEIP", "CTCWE", "CTCWEC", "CTC1", "CTC2", "CTCNGX", "CTCEGX")
+ct_value_stoch <- 35
+
+
+### Variable (column) with patient identifier (unique for each patient)
 patient_ID <- "NIP"
 
-### Variable (column) with sample identifier (unique)
+### Variable (column) with sample identifier (unique for eache sample)
 sample_ID <- "Numero Alias"
 
 ### Variable (column) with sample reception date. See e.g. https://www.r-bloggers.com/date-formats-in-r/ to see how to format your dates
 date_col <- "Dt.recept."
 date_form <- "%d/%m/%Y"
+
+### Variable (column) with sample reception hour See e.g. https://www.r-bloggers.com/date-formats-in-r/ to see how to format your dates
+h_col <- "H.recept."
+h_form <- "%H:%M"
 
 #################################################################################################
 ################################### DON'T TOUCH #################################################
@@ -101,24 +106,26 @@ library(rlang)
 new_data <- read_xlsx(input_table_path , col_types = "guess", guess_max = 1000000) 
 
 ### Validated cases (input)
-if(file.exists("2_solved_cases_updated.xlsx")){
+if(file.exists("2_solved_cases_updated.xlsx")){ # Read it if exist
   validated_discordant <- read_xlsx("2_solved_cases_updated.xlsx", col_types = "guess", guess_max = 1000000) 
-}else{
+}else{ # else create it
   validated_discordant <- data.frame(matrix(ncol=length(colnames(data)),nrow=0, dimnames=list(NULL, colnames(data))), check.names = FALSE)
   write_xlsx(validated_discordant, "2_solved_cases_updated.xlsx")
 }
 
 ### Previously compiled database of samples
-if(file.exists("0_previous_results_database.xlsx")){
+if(file.exists("0_previous_results_database.xlsx")){ # Read it if exist 
   sample_db <- read_xlsx("0_previous_results_database.xlsx", col_types = "guess", guess_max = 1000000) 
-}else{
+}else{  # else create it
   sample_db <- data.frame()
 }
 
+### Columns describing the sample type
+sample_type <- "Materiel"
 
 ### Dictionaries translating and regrouping the "sample type" column
-specimen_dictionary <- read_xlsx(dict_path, sheet = 1)
-bad_sample <-  read_xlsx(dict_path, sheet = 2)
+specimen_dictionary <- read_xlsx(dict_path, sheet = 1) # Translate column value to a group
+bad_sample <-  read_xlsx(dict_path, sheet = 2) # Assign group into "Low yield sample" (Y) or not (N)
 
 ## Determine time and user flag. Create an archive directory with it
 st <- format(Sys.time(), "%Y%m%d_%H%M%S")
@@ -141,13 +148,12 @@ if(length(missing_NIP[[sample_ID]])>0){
   write_xlsx(x = missing_NIP, path = "3_missing_IPP.xlsx")
   
 }else{
-  
-  #### else, remove the table with missinig table, if previously existing
+  #### else, remove the table with missing table, if previously existing
   file.remove("3_missing_IPP.xlsx")
 }
 
 #### Filter out any result not "POSITIVE" nor "NEGATIVE" or which are missing a patient ID
-new_data_P_N <- new_data[new_data[[Results_col]] %in% Results_variables & new_data[[sample_ID]] %!in% missing_NIP[[sample_ID]],]
+new_data_P_N <- new_data[new_data[[Results_col]] %in% c(POS_result_variable, NEG_result_variable) & new_data[[sample_ID]] %!in% missing_NIP[[sample_ID]],]
 
 
 #### Back-up the filtered input table for traceability 
@@ -183,8 +189,9 @@ write_xlsx(x = data_completed, path = "0_previous_results_database.xlsx")
 #### Plot
 tests_hist <- ggplot(data=data_completed, aes(as.Date(!!rlang::sym(date_col), format = "%d/%m/%Y"), fill = !!rlang::sym(Results_col))) +
   geom_histogram(binwidth = 1, colour="white", size=0.1, alpha = 0.8) +
+  scale_fill_manual(values=c("cadetblue3", "tomato2")) +
   theme_bw() +
-  xlab("Analyses") +
+  xlab("SARS-CoV-2 RT PCR per day") +
   scale_y_continuous(breaks= pretty_breaks()) +
   labs(title = "N. of daily tests",
        subtitle = paste("Concerns", length(unique(data_completed[[patient_ID]])), "unique patients and", length(unique(data_completed[[sample_ID]])), "samples") ,
@@ -197,15 +204,14 @@ ggsave(tests_hist, filename =  paste0(file_flag, "/", "0_input_extracted_",file_
 
 ## Already validated cases
 ### Translate in data the material to the new description and if it is a Low yield sample
-m <- match(data_completed$Materiel, specimen_dictionary$specimen_orig)
-data_completed$Materiel_ENG <- specimen_dictionary$specimen_ENG[m]
+m <- match(data_completed[[sample_type]], specimen_dictionary[[1]])
+data_completed$sample_type_category <- specimen_dictionary[[2]][m]
 
-n <- match(data_completed$Materiel_ENG, bad_sample$specimen_ENG)
-data_completed$Bad_sample <- bad_sample$Bad_sample[n]
-
+n <- match(data_completed$sample_type_category, bad_sample[[1]])
+data_completed$Bad_sample <- bad_sample[[2]][n]
 
 ## Find samples with undefined material
-missing_sample_type <-  data_completed$Materiel[is.na(data_completed$Materiel_ENG)]
+missing_sample_type <-  data_completed[[sample_type]][is.na(data_completed$sample_type_category)]
 
 #### write the list of these samples if not empty
 if(length(missing_sample_type)>0){
@@ -224,7 +230,7 @@ if(length(missing_sample_type)>0){
 
 
 #### Compute a time to positivity for discordant cases   
-## A big loop to evaluate potential discordancy in samples
+## A big loop to evaluate potential discprenancies in samples
 
 ### Generate columns to be filled
 data_completed$compared_with <- NA
@@ -235,14 +241,14 @@ data_completed$detailed_explanation <- NA
 data_completed$broad_explanation <- NA
 
 ### Find patient with multiple analyses
-multi_test_pat <- unique(data_completed$NIP[duplicated(data_completed$NIP)])
+multi_test_pat <- unique(data_completed[[patient_ID]][duplicated(data_completed[[patient_ID]])])
 
 ### Loop over each patient tested multiple time
 for (p in multi_test_pat){
   
-  data_completed_p <- filter(data_completed, NIP == p) %>% arrange(as.POSIXct(paste(Dt.recept., H.recept.), format = "%d/%m/%Y %H:%M"))# arrange by patient and time.
+  data_completed_p <- filter(data_completed, !!sym(patient_ID) == p) %>% arrange(as.POSIXct(paste(!!sym(date_col), !!sym(h_col)), format = paste(date_form, h_form)))# arrange by patient and time.
   
-  if (length(data_completed_p$`Numero Alias`)>1){
+  if (length(data_completed_p[[sample_ID]])>1){
     
     #### Reset to NA these values when starting with a new patient
     previous_sample_ID <- NA
@@ -255,92 +261,92 @@ for (p in multi_test_pat){
     time_to <- NA
     
     #### Loop over all samples from a patient to apply classification algorithm
-    for (a in data_completed_p$`Numero Alias`){
+    for (a in data_completed_p[[sample_ID]]){
       
       ##### Extract some data for the currently evaluated sample
       current_sample_ID <- a
-      current_result <- data_completed_p$COWE[data_completed_p$`Numero Alias`== a]
-      current_date <- data_completed_p$Dt.recept.[data_completed_p$`Numero Alias`== a]
-      current_Ct <- max(as.numeric(as.character(data_completed_p[data_completed_p$`Numero Alias`== a, c("COVWIP", "COWEIP", "CTCWE", "CTCWEC", "CTC1", "CTC2", "CTCNGX", "CTCEGX")], na.rm = TRUE)), na.rm =  TRUE)
-      current_bad_sample <- data_completed_p$Bad_sample[data_completed_p$`Numero Alias`== a]
-      current_sample_type <- data_completed_p$Materiel_ENG[data_completed_p$`Numero Alias`== a]
+      current_result <- data_completed_p[[Results_col]][data_completed_p[[sample_ID]]== a]
+      current_date <- data_completed_p[[date_col]][data_completed_p[[sample_ID]]== a]
+      current_Ct <- max(as.numeric(as.character(data_completed_p[data_completed_p[[sample_ID]]== a, ct_cols], na.rm = TRUE)), na.rm =  TRUE)
+      current_bad_sample <- data_completed_p$Bad_sample[data_completed_p[[sample_ID]]== a]
+      current_sample_type <- data_completed_p$sample_type_category[data_completed_p[[sample_ID]]== a]
       
-      time_to <- as.Date(current_date, format = "%d/%m/%Y") - as.Date(previous_date, format = "%d/%m/%Y")
+      time_to <- as.Date(current_date, format = date_form) - as.Date(previous_date, format = date_form)
       
       ##### If there was no previous sample, compared is NA
       if(is.na(previous_result)){
         
-        data_completed$compared_to_previous[data_completed$`Numero Alias`== a] <- NA
+        data_completed$compared_to_previous[data_completed[[sample_ID]]==a] <- NA
         
         ##### If previous was the same, compared_to is "concordant"
       } else if(previous_result == current_result){
         
-        data_completed$compared_to_previous[data_completed$`Numero Alias`== a] <- "Concordant"
+        data_completed$compared_to_previous[data_completed[[sample_ID]]== a] <- "Concordant"
         
-        data_completed$time_to_conco[data_completed$`Numero Alias`== a] <- time_to
+        data_completed$time_to_conco[data_completed[[sample_ID]] == a] <- time_to
         
-        data_completed$compared_with[data_completed$`Numero Alias`== a] <- previous_sample_ID
+        data_completed$compared_with[data_completed[[sample_ID]] == a] <- previous_sample_ID
         
         ##### If previous was different, then we apply a list of criteria.  
       } else if (previous_result != current_result){
         
-        data_completed$compared_to_previous[data_completed$`Numero Alias`== a] <- "Discordant"
+        data_completed$compared_to_previous[data_completed[[sample_ID]] == a] <- "Discordant"
         
-        data_completed$compared_with[data_completed$`Numero Alias`== a] <- previous_sample_ID
+        data_completed$compared_with[data_completed[[sample_ID]] == a] <- previous_sample_ID
         
-        if(current_result == "POSITIVE"){
+        if(current_result == POS_result_variable){
           
-          data_completed$time_to_disco[data_completed$`Numero Alias`== a] <- time_to
+          data_completed$time_to_disco[data_completed[[sample_ID]] == a] <- time_to
           
           if(previous_bad_sample == "Y"){
             
-            data_completed$detailed_explanation[data_completed$`Numero Alias`== a] <- "Previous sample was a Low yield sample"
-            data_completed$broad_explanation[data_completed$`Numero Alias`== a] <- "Low yield sample"
+            data_completed$detailed_explanation[data_completed[[sample_ID]]== a] <- "Previous sample was a Low yield sample"
+            data_completed$broad_explanation[data_completed[[sample_ID]]== a] <- "Low yield sample"
             
           } else if(current_Ct > 35 & previous_sample_type == current_sample_type){
             
-            data_completed$detailed_explanation[data_completed$`Numero Alias`== a] <- "Current sample has high Ct, previous sample could have been affected by stochasticity"
-            data_completed$broad_explanation[data_completed$`Numero Alias`== a] <- "Stochastic"
+            data_completed$detailed_explanation[data_completed[[sample_ID]]== a] <- "Current sample has high Ct, previous sample could have been affected by stochasticity"
+            data_completed$broad_explanation[data_completed[[sample_ID]]== a] <- "Stochastic"
             
           } else if (time_to > 10 ){
             
-            data_completed$detailed_explanation[data_completed$`Numero Alias`== a] <- "Previous NEG sample was > 10 days, new infection likely"
-            data_completed$broad_explanation[data_completed$`Numero Alias`== a] <- "Time delay"
+            data_completed$detailed_explanation[data_completed[[sample_ID]]== a] <- "Previous NEG sample was > 10 days, new infection likely"
+            data_completed$broad_explanation[data_completed[[sample_ID]]== a] <- "Time delay"
             
           } else{
             
-            data_completed$broad_explanation[data_completed$`Numero Alias`== a] <- "To be investigated"
+            data_completed$broad_explanation[data_completed[[sample_ID]]== a] <- "To be investigated"
             
             
           }
           
           
-        }else if(current_result == "NEGATIVE"){
+        }else if(current_result == NEG_result_variable){
           
-          data_completed$time_to_disco[data_completed$`Numero Alias`== a] <- -time_to 
+          data_completed$time_to_disco[data_completed[[sample_ID]]== a] <- -time_to 
           
           if(current_bad_sample == "Y"){
             
-            data_completed$detailed_explanation[data_completed$`Numero Alias`== a] <- "Current sample is a Low yield sample"
-            data_completed$broad_explanation[data_completed$`Numero Alias`== a] <- "Low yield sample"
+            data_completed$detailed_explanation[data_completed[[sample_ID]]== a] <- "Current sample is a Low yield sample"
+            data_completed$broad_explanation[data_completed[[sample_ID]]== a] <- "Low yield sample"
             
             next()
             
           } else if(previous_Ct > 35 & previous_sample_type == current_sample_type){
             
-            data_completed$detailed_explanation[data_completed$`Numero Alias`== a] <- "Previous sample had high Ct, this sample could be affected by stochasticity"
-            data_completed$broad_explanation[data_completed$`Numero Alias`== a] <- "Stochastic"
+            data_completed$detailed_explanation[data_completed[[sample_ID]]== a] <- "Previous sample had high Ct, this sample could be affected by stochasticity"
+            data_completed$broad_explanation[data_completed[[sample_ID]]== a] <- "Stochastic"
             
             next()
             
           } else if (time_to > 10 ){
             
-            data_completed$detailed_explanation[data_completed$`Numero Alias`== a] <- "Previous POS sample was > 10 days, infection resolution likely"
-            data_completed$broad_explanation[data_completed$`Numero Alias`== a] <- "Time delay"
+            data_completed$detailed_explanation[data_completed[[sample_ID]]== a] <- "Previous POS sample was > 10 days, infection resolution likely"
+            data_completed$broad_explanation[data_completed[[sample_ID]]== a] <- "Time delay"
             
           } else{
             
-            data_completed$broad_explanation[data_completed$`Numero Alias`== a] <- "To be investigated"
+            data_completed$broad_explanation[data_completed[[sample_ID]]== a] <- "To be investigated"
             
             next()
             
@@ -367,14 +373,14 @@ for (p in multi_test_pat){
 }
 
 ### Keep only patients not belonging to the list of multiple tested patients
-unique_test_pat_df <- data_completed[data_completed$NIP %!in% multi_test_pat,]
+unique_test_pat_df <- data_completed[data_completed[[patient_ID]] %!in% multi_test_pat,]
 
 ### Write this table of uniquely tested patients for traceability
 write_xlsx(x = unique_test_pat_df, path = paste0(file_flag, "/","1_unique_test_patients_",file_flag,".xlsx" ))
 
 ## Patients tested multiple times
 ### Keep only samples from patients belonging to the list of multiple tested patients
-multi_test_pat_df <- data_completed[data_completed$NIP %in% multi_test_pat,]
+multi_test_pat_df <- data_completed[data_completed[[patient_ID]] %in% multi_test_pat,]
 
 ### Write this table of multiple tested patients for traceability
 write_xlsx(x = multi_test_pat_df, path = paste0(file_flag, "/","1_multiple_tests_patients_",file_flag,".xlsx" ))
@@ -384,19 +390,18 @@ write_xlsx(x = multi_test_pat_df, path = paste0(file_flag, "/","1_multiple_tests
 #### Filter
 concordant_time_to <- data_completed %>% 
   filter(compared_to_previous == "Concordant") %>% 
-  group_by(NIP, Bad_sample) %>%
-  arrange(`Nom pat.`, as.Date(Dt.recept., format = "%d/%m/%Y")) # arrange by patient and time.
+  group_by(!!sym(patient_ID), Bad_sample) %>%
+  arrange(!!sym(patient_ID), as.Date(!!sym(date_col), format = date_form))# arrange by patient and time.
 
 
 #### Plot time to for concordant cases
-concord_hist <- ggplot(data=concordant_time_to, aes(abs(time_to_conco), fill = COWE)) +
-  geom_histogram(binwidth = 1, colour="black") +
-  facet_grid(Dem.group ~ .) +
+concord_hist <- ggplot(data=concordant_time_to, aes(abs(time_to_conco), fill = !!sym(Results_col))) +
+  geom_histogram(binwidth = 1, colour="white", size=0.1, alpha = 0.8) +
   theme_bw() +
   xlab("Time lap between concordant analyses") +
   scale_y_continuous(breaks= pretty_breaks()) +
   labs(title = "Time to concordant SARS-CoV-2 analyses",
-       subtitle = paste("Concerns", length(unique(concordant_time_to$NIP)), "unique patients and", length(unique(concordant_time_to$`Numero Alias`)), "samples") ,
+       subtitle = paste("Concerns", length(unique(concordant_time_to[[patient_ID]])), "unique patients and", length(unique(concordant_time_to[[sample_ID]])), "samples") ,
        caption = "Time lag for concordant SARS-CoV-2 analyses")
 
 
@@ -409,12 +414,12 @@ write_xlsx(x = concordant_time_to, path = paste0(file_flag, "/","2_multiple_test
 
 ### Discordant cases analysis
 #### Filter and format discordant cases
-disco_patients <- unique(data_completed$NIP[data_completed$compared_to_previous == "Discordant"])
+disco_patients <- unique(data_completed[[patient_ID]][data_completed$compared_to_previous == "Discordant"])
 
 discordant_time_to <- data_completed %>% 
-  filter(NIP %in% disco_patients) %>% 
-  group_by(NIP, Bad_sample) %>%
-  arrange(`Nom pat.`, as.Date(Dt.recept., format = "%d/%m/%Y")) # arrange by patient and time.
+  filter(!!sym(patient_ID) %in% disco_patients) %>% 
+  group_by(!!sym(patient_ID), Bad_sample) %>%
+  arrange(!!sym(patient_ID), as.Date(!!sym(date_col), format = date_form)) # arrange by patient and time.
 
 
 #### Plot already validated cases in a histogram indicating the time to discordancy
@@ -426,16 +431,14 @@ discordant_time_to_relabeled$Bad_sample <- factor(discordant_time_to_relabeled$B
 
 ##### Plot
 hist_time_to <- ggplot(data=discordant_time_to_relabeled, aes(time_to_disco, fill = broad_explanation, colour=broad_explanation)) + 
-  geom_histogram(binwidth = 1) +
+  geom_histogram(binwidth = 1, colour="white", size=0.1, alpha = 0.8) +
   theme_bw() +
   xlab("Time to positivity [Days]") +
   #scale_y_continuous(breaks= pretty_breaks()) +
   #scale_x_continuous(breaks= pretty_breaks(n = 10)) +
   labs(title = "Time laps between discordant analyses",
-       subtitle = paste("Concerns", length(unique(discordant_time_to_relabeled$NIP)), "unique patients and", length(unique(discordant_time_to_relabeled$`Numero Alias`)), "samples"),
+       subtitle = paste("Concerns", length(unique(discordant_time_to_relabeled[patient_ID])), "unique patients and", length(unique(discordant_time_to_relabeled[[sample_ID]])), "samples"),
        caption = "Positive values for NEG --> POS, negative for POS --> NEG transitions") 
-#facet_grid(Bad_sample ~ .)
-
 
 ##### Save this plot
 ggsave(hist_time_to, filename =  paste0(file_flag, "/","2_input_discordant_time_to_hist.png"), width = 7, height = 7)
@@ -443,13 +446,13 @@ ggsave(hist_time_to, filename =  paste0(file_flag, "/","2_input_discordant_time_
 
 
 #### Filter out of these discordant cases already treated samples
-to_be_investigated_patients <- data_completed$NIP[which(data_completed$broad_explanation == "To be investigated")]  
-analyses_of_to_be_investigated_patients <- data_completed[data_completed$NIP %in% to_be_investigated_patients,] 
+to_be_investigated_patients <- data_completed[[patient_ID]][which(data_completed$broad_explanation == "To be investigated")]  
+analyses_of_to_be_investigated_patients <- data_completed[data_completed[[patient_ID]] %in% to_be_investigated_patients,] 
 
-to_be_validated_by_hand <- analyses_of_to_be_investigated_patients[analyses_of_to_be_investigated_patients$`Numero Alias` %!in% validated_discordant$`Numero Alias`,]
+to_be_validated_by_hand <- analyses_of_to_be_investigated_patients[analyses_of_to_be_investigated_patients[[sample_ID]] %!in% validated_discordant[[sample_ID]],]
 to_be_validated_by_hand <- to_be_validated_by_hand %>% 
-  group_by(NIP, Bad_sample) %>%
-  arrange(`Nom pat.`, as.Date(Dt.recept., format = "%d/%m/%Y"))
+  group_by(!!sym(sample_ID), Bad_sample) %>%
+  arrange(!!sym(patient_ID), as.Date(!!sym(date_col), format = date_form)) # arrange by patient and time.
 
 
 #### Write these samples to be valited for traceability
